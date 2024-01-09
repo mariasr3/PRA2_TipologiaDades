@@ -2,7 +2,7 @@
 *Autores:* **Joana Llauradó Pont, Maria Sopena Rios**
 
 *Gener 2024*
-## “Obres de teatre a Barcelona” 
+## “Prevalença de malalties per grups demogràfics” 
 En aquesta pràctica s’elabora un cas pràctic un cas pràctic orientat a aprendre a identificar les dades rellevants per un projecte analític i usar les eines d'integració, neteja, validació i anàlisi de les mateixes. En aquest cas, utilitzarem un dataset lliure sobre *Indicators of Heart Disease* (https://www.kaggle.com/datasets/kamilpytlak/personal-key-indicators-of-heart-disease) per estudiar la prevalença de malalties o altres factors entre grups poblacionals.  
 
 ### Arxius 
