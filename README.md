@@ -7,6 +7,7 @@ En aquesta pràctica s’elabora un cas pràctic un cas pràctic orientat a apre
 
 ### Arxius 
 - **README.md**
+- **PRA2-PRA2_SopenaMaria_LlauradoJoana.pdf**: Document amb l'explicació dels resultats
 - **codi/PRA2-AnalisiEstadístic.Rmd**: Markdown amb el codi i l'explicació dels anàlisis
 - **codi/PRA2-AnalisiEstadístic.hml**: Markdown en format html
 - **data/heart_2020_original**: dataset original descarregat de Keggle (https://www.kaggle.com/datasets/kamilpytlak/personal-key-indicators-of-heart-disease)
