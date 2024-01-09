@@ -1,0 +1,462 @@
+---
+title: "PRA2- Tipologia de Dades"
+author: "Joana Llauradó & Maria Sopena Rios"
+date: "2024-01-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr);library(ggplot2);library(tidyr);library(multcomp)
+```
+
+# PRA2- TIPOLOGIA DEDADES
+
+En aquesta pràctica utilitzarem el dataset lliure *Indicators of Heart Disease* de Keggel (https://www.kaggle.com/datasets/kamilpytlak/personal-key-indicators-of-heart-disease) . Aquest conjunt de dades es va obtenir a partor de l'enquesta anual del 2020 dels Centres per al Control i Prevenció de Malalties o, en anglès,  Centers for Disease Control and Prevention (CDC) i conte dades de més de 300.000 adults sobre el seu estat de salut. 
+
+En aquesta pràctica realitzarem els següents estudis:
+- **Estudi de Prevalencia**: Estudiar la prevalencia de malalties (Cardiovascular, Infart, Diabetes, Athma, Malalria Renal i Cancer de Pell) estratificada per sexe,raça i edat.
+- **Estudi d'Associacions**: Segons les prevalencies anteriors  escollirem esudiar de les assocaions més remarcables (asthma-edat, malalties cardiovasculars-edat, cancer pell-raça)
+- **Estudi de Correlacions**: Correlacio de les hores de son (factor de risc de malalties cardiovasculars) i edat. Correlació de cosnum d'alcohol, fumadors, activtiat física amb les hores de son. 
+
+      
+## 1. Descripció del dataset 
+
+```{r descripció del dataset}
+df <- read.csv("../data/heart_2020_original.csv")
+dim(df)
+head(df)
+```
+Aquest dataset conté informació de 319,795 pacients, un nombre molt elevat que ens ens permetrà fer anàlisis estadísticament molt robustos. Per altra banda, tenim 18 columnes que contenen informació sobre aquests pacients: 
+
+- **HeartDisease**: Presència de malaltia cardiovascular
+- **BMI**: Index de massa corporal 
+- **Smoking**: Persona fumadora 
+- **"AlcoholDrinking"**: Persona que ingereix alcohol
+- **Stroke**: Pacient que ha patit un atac de cor
+- **PhysicalHealth**: Índex que indica l'estat de salut física 
+- **MentalHealth**:  Índex que indica l'estat de salut física 
+- **DiffWalking**: Dificultat en caminar 
+- **Sex**: Sexe del pacient 
+- **AgeCategory**: Categoria d'edat
+- **Race"**: Ascencència 
+- **Diabetic**: Pacient diabètic 
+- **PhysicalActivity**: Activitat físca 
+- **GenHealth**: estat de salut general 
+- **"SleepTime"**: Hores dormides 
+- **Asthma**: Pacient amb asma 
+- **"KidneyDisease**: Pacient amb malaltia renal 
+- **"SkinCancer**: Cancer de pell
+
+Per poder veure més informació sobre les variables com ara el seu tipus podem fer servir la funció str(). 
+
+## 2. Integració i selecció del dataset 
+En aquest cas el conjunt de dades està complet i les seves dimensions sona dequades per poder realitzar anàlisis estadístics pel que no s'han integrats més datasets. 
+
+## 3. Neteja de dades 
+
+3.1. Les dades contenen 0 o elements buits? 
+```{r data cleaning}
+table(is.na(df))
+```
+Tal com podem veure ens trobem davant d'un dataset sense missing values, pel que està complet. A nivell de "0" només mirem les variables numèriques ja que en el cas de les categòriques el "0" fan referència a una categoria. Podem veure que de les 4 variables numèriques: BMI, SleepTime, PhsyclaHealth i MentalHEalth aquestes dues ultimes si que tenen 0, ara en aquest cap estem parlant d'index que van del 0 al 30 pel que en aquest cas no cal aplicar cap transformació. 
+
+```{r}
+numeric_columns_not_zero <- sapply(df, function(x) is.numeric(x) && all(x != 0))
+
+# Filter the columns that are numeric and not equal to zero
+numeric_columns_filtered <- df[, numeric_columns_not_zero, drop = FALSE]
+
+# Print the names of the selected columns
+print(names(numeric_columns_filtered))
+
+```
+
+
+### 3.2.Distribució de valors 
+
+**Numèriques**
+Per tal de veure la distribució de variables numèriques podem optar per una representació gràfica com el box plot o bé podem utilitzar la funció (summary).
+
+```{r data cleaning1}
+
+numeric_columns <- df[sapply(df, is.numeric)]
+
+# Setting up a single row for subplots
+par(mfrow=c(1, 1), mar=c(4, 4, 2, 2))  # Adjust the 'mar' parameter for margin space
+
+# Creating boxplots for each numeric variable in a single plot with different y-axes
+boxplot(numeric_columns, main="Boxplots for Numeric Variables", col=1:length(colnames(numeric_columns)), names=colnames(numeric_columns))
+
+``` 
+
+
+```{r}
+numeric_columns <- df[sapply(df, is.numeric)]
+
+# Summary statistics for numeric variables
+summary_data <- summary(numeric_columns)
+
+# Print the summary data
+print(summary_data)
+```
+
+En el cas de BMI si mirem el boxplot veiem que hi ha alguns outliers, per tal de detectarlos podem utilitzar el metòde de Tukey. En el cas de les altres variables tot i que begem outliers més avait ens indiqiuen que una gran part dels pacients tenen una valors elevats en quant a Mental i Physical Health. 
+```{r}
+# Calculem els límits de les caixes de Tukey
+Q1 <- quantile(df$BMI, 0.25)
+Q3 <- quantile(df$BMI, 0.75)
+IQR <- Q3 - Q1
+
+# Límits inferior i superior per a outliers
+lower_limit <- Q1 - 1.5 * IQR
+upper_limit <- Q3 + 1.5 * IQR
+
+# Identifiquem els outliers
+outliers <- df$BMI[df$BMI < lower_limit | df$BMI > upper_limit]
+
+# Mostrem els outliers
+cat("Outliers:", length(outliers) )
+
+# Replace outlier 
+# # Calculate the IQR (Interquartile Range)
+#IQR <- Q3 - Q1
+
+# Define the lower and upper bounds for outliers
+#lower_bound <- Q1 - 1.5 * IQR
+#upper_bound <- Q3 + 1.5 * IQR
+
+# Replace outliers with the nearest non-outlier value
+#df$BMI[df$BMI < lower_bound] <- lower_bound
+#df$BMI[df$BMI > upper_bound] <- upper_bound
+
+```
+
+**Categòriques**
+```{r}
+categorical_columns <- df[sapply(df, function(x) is.factor(x) | is.character(x))]
+
+# Setting up a layout for multiple plots
+par(mfrow=c(2, 2))  # You can adjust the dimensions based on the number of categorical variables
+
+# Creating barplots for each categorical variable
+for (column in colnames(categorical_columns)) {
+  # Calculate percentages
+  percentages <- table(df[[column]]) / nrow(df) * 100
+  
+  # Create barplot
+  barplot(percentages, main=paste("Barplot of", column), xlab=column, ylab="Percentage")
+}
+
+# Reset the layout for the next plot
+par(mfrow=c(1, 1))
+```
+
+3.3. Convertim la columna de diabetes a dos categories 
+```{r}
+df[df$Diabetic == "No, borderline diabetes", ]$Diabetic <- "No"
+df[df$Diabetic == "Yes (during pregnancy)", ]$Diabetic <- "Yes"
+
+```
+
+3.3. Convertim la columna de GeneralHealth a numèrica per poder fer correlacions després: 
+```{r}
+unique(df$GenHealth)
+#Excellent -> 5
+#Very good -> 4
+#Good -> 3 
+#Fair -> 2
+#Poor -> 1
+gen_health_mapping <- c("Poor" = 1, "Fair" = 2, "Good" = 3, "Very good" = 4, "Excellent" = 5)
+
+# Apply the mapping to create a new column
+df <- df %>%
+  mutate(GenHealth_numeric = factor(GenHealth, levels = names(gen_health_mapping), labels = gen_health_mapping))
+
+write.csv(df, "../data/heart_2020_cleaned")
+```
+
+## 4. Resolució del problema/Anàlisi de dades 
+### 4.1. Selecció dels grups de dades i tipus d'anàlisis
+1 - Prevalència de malaltia segons el sexe: Es calculara la freqüència de cada malaltia segons el sexe dels participants mitjançant 6 variables categòriques (la variable de sexe i cada variable corresponent a les malalties).
+2 - Associació de malaltia amb sexe. Com que estem parlant de dos grups de variables categòriques apliquem un Chi Square Test per mirar l'associació. 
+3 - Prevalència  i associació de càncer de pell segons raça. Per mirar la prevàlencia mirem altre cop la freqüència mentre que per estudiar l’assoaició utilitzem un model logisitic (GLM) ja que els dos grups de varibales (raça i sexe) son categòriques. 
+4 - Associaicó o relaicó d’hores de son segons l’edat. en aqeusts cas estem estudiant una variable numèrica amb una de categ`rocia pel que aplicarem un test d’ANOVA per veure si hi ha o no associació. També es podria aplciar el test de Krusal-Wallis test. 
+5 - Per estudiar la correlació entre es diversos factors de risc per les malalties cardiosvasculars i la diabetes fem una anàlszi de correlaicó aplican Pearson’s ja que estem comparant variables categòriques. 
+
+
+### 4.2.1 Anàlisis 1: Prevalència de malaltia segons sexe, edat i etnicitat 
+
+**Sexe**
+Mostra la distribució de presencia/absència de malaltia per sexe 
+
+```{r}
+females  <- df %>% filter(Sex == "Female") %>% dplyr::select(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer) %>% pivot_longer(cols = c(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer), names_to = "disease", values_to = "yes_no")
+
+females$Sex <- "Females"
+
+males  <- df %>% filter(Sex == "Male") %>% dplyr::select(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer) %>% pivot_longer(cols = c(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer), names_to = "disease", values_to = "yes_no")
+males$Sex <- "Males"
+
+df_males_females <- rbind(females, males)
+
+ggplot(df_males_females, aes(disease, fill=yes_no))+geom_bar(stat="count", position="fill")+facet_grid(~Sex)
+
+```
+
+De la gent que té una malaltia, quin és el percentage d'homes i dones? 
+
+```{r}
+
+vars <- c("HeartDisease", "Stroke", "Diabetic", "Asthma", "KidneyDisease", "SkinCancer")
+
+new_df <- c("Disease"=NULL, "Sex"=NULL)
+for(var in vars){
+  df_var <- df[, c(var, "Sex")]
+  df_var <- df_var[df_var[var] == "Yes",]
+  df_var$Disease <- var
+  df_var <- df_var[,-1]
+  new_df <- rbind(new_df, df_var)
+}
+
+ggplot(new_df, aes(x=Disease, fill=Sex))+geom_bar(stat="count", position = "fill")+ylab("Proportion")+theme_minimal()+ggtitle("Proportion of diseased patients colored by sex")
+```
+Aquests resultats ens mostren que tot i que la distribució per malaltia entre sexes és sobre el 50% en la majoria dels casos, veiem que sembla que en Asma positiu hi hagi un major percentage de dones i en HeartDisease d'homes. 
+
+
+
+**Raça**
+Mostra la distribució de presencia/absència de malaltia per edat
+
+```{r}
+# Select relevant columns and pivot data
+race_data <- df %>%
+  dplyr::select(Race, HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer) %>%
+  pivot_longer(cols = c(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer), names_to = "disease", values_to = "yes_no")
+
+# Create individual plots for each disease
+ggplot(race_data, aes(x = Race, fill = yes_no)) +
+  geom_bar(stat = "count", position = "fill") +
+  facet_wrap(~disease, scales = "free_y", ncol = 3) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Adjust x-axis label angle if needed
+```
+Podem observar que la majoria de malalties les distribucions son semblant en les diferents ascendencies però que en el cas de càncer de pell si que es veu una diferència segons el tipus d'ascencencia. Una altra manera de visualitzar-ho seria amb un stacked barplot on podem veure altre cop que en cas de cancer de pell l'ascendencia europea (white) és més prevalent en aquest tipus de cancer. 
+
+```{r}
+
+vars <- c("HeartDisease", "Stroke", "Diabetic", "Asthma", "KidneyDisease", "SkinCancer")
+
+new_df <- c("Disease"=NULL, "Sex"=NULL)
+for(var in vars){
+  df_var <- df[, c(var, "Race")]
+  df_var <- df_var[df_var[var] == "Yes",]
+  df_var$Disease <- var
+  df_var <- df_var[,-1]
+  new_df <- rbind(new_df, df_var)
+}
+
+ggplot(new_df, aes(x=Disease, fill=Race))+geom_bar(stat="count", position = "fill") + ylab("Proportion")+theme_minimal() +ggtitle("Proportion of diseased patients colored by race")
+```
+
+
+**Edat**
+Mostra la distribució de presencia/absència de malaltia per edat
+
+```{r}
+# Select relevant columns and pivot data
+disease_data <- df %>%
+  dplyr::select(AgeCategory, HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer) %>%
+  pivot_longer(cols = c(HeartDisease, Stroke, Diabetic, Asthma, KidneyDisease, SkinCancer), names_to = "disease", values_to = "yes_no")
+
+# Create individual plots for each disease
+ggplot(disease_data, aes(x = AgeCategory, fill = yes_no)) +
+  geom_bar(stat = "count", position = "fill") +
+  facet_wrap(~disease, scales = "free_y", ncol = 3) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Adjust x-axis label angle if needed
+```
+En primer lloc podem veure com en totes les malalties (a excepció de Kideny Disease) una major dat implica una major prevàlencia de presència de malaltia. 
+En el següent plot veurem d'entre les diferents categores d'edats quines malalties tenen major prevlaència. Observem doncs que  eart disesase i stroke son majoritariament m alalties de població envellida. 
+
+```{r}
+# Define a color scale for diseases
+disease_colors <- c("HeartDisease" = "red", "Stroke" = "blue", "Diabetic" = "green",
+                     "Asthma" = "purple", "KidneyDisease" = "orange", "SkinCancer" = "brown")
+yes_data <- disease_data %>% filter(yes_no == "Yes")
+
+ggplot(yes_data, aes(x = disease, fill = AgeCategory)) +
+  geom_bar(position = "fill") +
+  theme_minimal() +
+  scale_fill_viridis_d() +  # Utilizar la paleta de colores viridis
+
+  labs(title = "Prevalencia de Enfermedades por Categoría de Edad",
+       x = "Enfermedad",
+       y = "Proporción de Casos") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Ajustar el ángulo de las etiquetas del eje x si es necesario
+
+```
+
+### 4.2. Anàlisis 2: Associacio Asma i malaltia cardovascular -   sexe
+
+Hem vist que hi ha una prevalència d'Asthma en dones superior a homes, per altra banda en el cas de malalties cardiosvaculars es veu una major prevalencia en homes. Per veure si hi ha una assocació entre sexe i aquestes malaltia fem un **ChiSquare**, ja que aquest ja que ambdues variables son categòriques. Així podrem veure si realment aquesta major prevalencia esta indiciant que el sexe femení es un factor de risc per patir asma o no i, si el sexe masculi es un factor de risc per malalties caridosvasculars. 
+Primer fem el test amb Asma: 
+```{r}
+contingency_table_Astma <- table(df$Sex, df$Asthma)
+chisq.test(contingency_table_Astma)
+```
+Els resultats ens mostren un p-valor significatiu que ens permet rebutjar la hipòtesi nul·la i per tant podem dir que hi ha una associació entre Sexe i Asma 
+
+Ara fem el test amb Malaltia Cardiovascular 
+```{r}
+contingency_table_HeartDisease<- table(df$Sex, df$HeartDisease)
+chisq.test(contingency_table_HeartDisease)
+```
+Un altre cop obtenim resultats significatius que ens permeten afirmar que hi ha assocació entre Sexe i malaltia cardiovascular 
+
+
+```{r}
+contingency_table_Skin<- table(df$Sex, df$SkinCancer)
+chisq.test(contingency_table_Skin)
+```
+
+
+Un altre cop obtenim resultats significatius que ens permeten afirmar que hi ha assocació entre Sexe i malaltia cardiovascular 
+
+### 4.3. Anàlisis 3: Associacio color de pell - cancer de pell 
+
+Hi ha molts estudis que associen el color de pell amb un increment de risk de patir cancer de pell (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7087065/). Per tant, en aquesta part del nostre estudi ens volem enfocar en veure com de forta és la influència del color de pell (en aquest cas agafarem la raça) en la presència de cancer de pell. Per fer-ho utilitzarem una regressió logística amb Race com a variable predictiva corregint per Sexe, Edat i Fumadors (s'ha vist que fumar pot ser un factor de risk del cancer de pell) que podrien ser possibles confounders. 
+
+Primer però anem a fer una inspecció visual de les dades. 
+
+```{r}
+ancestry  <- df %>% dplyr::select(Race, SkinCancer) 
+
+ggplot(ancestry, aes(Race, fill=SkinCancer))+geom_bar(stat="count", position="fill")+theme_minimal()
+
+```
+Tal com esperàvem, hi ha un percentage més alt de persones amb pell blanc que tenen cancer de pell. Ara procedim a fer el model per veure com de forta és la influència del color de pell: 
+
+
+```{r}
+# Convertim skin cancer a binari 
+df$SkinCancer <- ifelse(df$SkinCancer == "Yes", 1, 0 )
+df$SkinCancer  <- as.factor(df$SkinCancer )
+df$Race <- as.factor(df$Race)
+df$Sex <- as.factor(df$Sex)
+df$AgeCategory <- as.factor(df$AgeCategory)
+df$AgeCategory <- as.factor(df$AgeCategory)
+
+# Fit logistic regression model
+model <- glm(SkinCancer ~ Race + Sex + AgeCategory + Smoking, data = df, family = "binomial")
+
+# Display model summary
+summary(model)
+```
+
+Els resultats d'aquest model ens mostren, tal com esperàvem, que Race contribueix significativament al cancer en tots els casos. Si ens fixem en el primer valor (Estimate) podem saber si l'associació és positiva o negativa. Aquest valor fa referència al log odds ratio de l'associació, el simbol ens indica si aquesta associació és positiva o negativa i el número la intensitat d'aquesta. Per tant veiem que *RaceAsian*, *RaceBlack*, *RaceHispanic* tenen una associació negativa, és a dir, en menys risc de càncer sent la raça negra la associació més forta. En canvi, *RaceOthers* i *RaceWhite* tenen una associació positivia suggerint un increment del risc en aquests dos grups racials. 
+
+Inesperadament, també trobem una associació significativa amb Homes i en totes les franges d'edat fet que corrobora la necessitat de posar aquestes variables al model per evitar resultats falsos i confusos. 
+
+
+
+### 4.4. Anàlisis 4: Impacte sleep time on age 
+
+Per tal d'estudiar si les hores de son estan relaciona o no amb l'edat aplicarem un test d'ANOVA. Com a alternativa en cas de tenir una gran homogeneitat també es podria aplicar un test de Kurskal-Willis en comptes d'un ANOVA. 
+
+
+```{r}
+# Check correlation using ANOVA
+anova_result <- aov(SleepTime ~ AgeCategory, data = df)
+print(summary(anova_result))
+
+# Alteernatia: cKruskal-Wallis test (non-parametric)
+#kruskal_result <- kruskal.test(SleepTime ~ AgeCategory, data = df)
+#print(kruskal_result)
+
+
+```
+El baix valor de p (<0,001) indica que les diferències observades no són probablement a causa dels atzar. Pel que podem concloure que hi Hi ha diferències significatives en les mitjanes de 'SleepTime' entre diferents nivells de 'AgeCategory'.
+
+Com que el resultat és significatiu també mirarem si hi ha diferències segons els grups d'edat mitjantcant  una prova de TukeyHSD. 
+
+
+```{r}
+# Perform Tukey's HSD post-hoc test
+tukey_result <- TukeyHSD(anova_result)
+# Bonferroni correction
+adjusted_tukey_result <- glht(anova_result, linfct = mcp(AgeCategory = "Tukey"))
+print(summary(adjusted_tukey_result))
+```
+
+Diferències signficiatives amb el grup jove: 
+
+30-34 vs. 18-24: Highly significant difference (***)
+35-39 vs. 18-24: Highly significant difference (***)
+40-44 vs. 18-24: Highly significant difference (***)
+45-49 vs. 18-24: Highly significant difference (***)
+50-54 vs. 18-24: Highly significant difference (***)
+55-59 vs. 18-24: Not significant (p-value = 0.9479)
+60-64 vs. 18-24: Highly significant difference (***)
+65-69 vs. 18-24: Not significant (p-value = 0.9886)
+70-74 vs. 18-24: Highly significant difference (***)
+75-79 vs. 18-24: Highly significant difference (***)
+80 or older vs. 18-24: Highly significant difference (***)
+
+Per exemple les hores de son son significativament diferents entre el grup d’edat 31-34 i el grup d’edadt 18-24. En canvi sembla ser que no hi ha difereǹcies significatives a nivell d’hores de son entre els més joves (18-24) i el grup de 65-69 anys d’edat. 
+
+
+
+### 4.5. Anàlisis 5: Esport i hores de son 
+
+```{r}
+# Subset the relevant columns
+activity_sleep_age_data <- df %>%
+  dplyr::select(PhysicalActivity, SleepTime, AlcoholDrinking, Smoking, AgeCategory)
+
+# Convert 'PhysicalActivity', 'AlcoholDrinking', and 'Smoking' to 1 for "Yes" and 0 for "No"
+activity_sleep_age_data <- activity_sleep_age_data %>%
+  mutate(
+    PhysicalActivity = ifelse(PhysicalActivity == "Yes", 1, 0),
+    AlcoholDrinking = ifelse(AlcoholDrinking == "Yes", 1, 0),
+    Smoking = ifelse(Smoking == "Yes", 1, 0)
+  )
+
+# Convert Sleep Time to numeric
+activity_sleep_age_data$SleepTime <- as.numeric(activity_sleep_age_data$SleepTime)
+
+# Calculate correlation coefficients
+correlation_physical_activity <- cor(activity_sleep_age_data$PhysicalActivity, activity_sleep_age_data$SleepTime)
+correlation_alcohol_drinking <- cor(activity_sleep_age_data$AlcoholDrinking, activity_sleep_age_data$SleepTime)
+correlation_smoking <- cor(activity_sleep_age_data$Smoking, activity_sleep_age_data$SleepTime)
+
+# Display the correlation coefficients
+print(paste("Correlation Coefficient between Physical Activity and Sleep Time: ", correlation_physical_activity))
+print(paste("Correlation Coefficient between Alcohol Drinking and Sleep Time: ", correlation_alcohol_drinking))
+print(paste("Correlation Coefficient between Smoking and Sleep Time: ", correlation_smoking))
+
+
+```
+[1] "Correlation Coefficient between Physical Activity and Sleep Time:  0.00384884137944224"
+"Correlation Coefficient between Alcohol Drinking and Sleep Time:  -0.00506545083386595"
+print(paste("Correlation Coefficient between Smoking and Sleep Time: ", correlation_smoking)
+
+This correlation coefficient is very close to zero, indicating a very weak or negligible linear relationship between Physical Activity and Sleep Time. 
+This suggests a slight tendency for individuals who drink more alcohol to have slightly shorter sleep times, but again, the relationship is very weak.
+Same for smooking. 
+
+
+
+## 5 Conclusió 
+En resum hem observat que: 
+- Hi ha algunes malalties més prevalents segons el sexe. En el cas de l’asma és més prevalent en dones mentre que en el cas de Heart Disease és més prevaent en homes. 
+- La raça blanca és més freqüent tenit càncer de pell en comparació amb altres races. També veiem que  *RaceAsian*, *RaceBlack*, *RaceHispanic* tenen menys risc de càncer sent la raça negra la associació més forta. En canvi, *RaceOthers* i *RaceWhite* tenen un major risc de patir aquest càncer.
+- Observem que els patrons de descnas o hores de son son diversos en els diferents grups d’edat i que en més d’un grup les diferencies son signficiatvies. A més a més, si mirem l’impacte que té realitzar activtiat física, beure alcohol i fumar  en dormir més o menys hores veiem que les correlacions entre aqeustes variables son febles pel que no podem concliure que siguin asuestes facotrs de risc els responsables de d’hormir més o menys hores. 
+Per tant, podem concliure que efectivament aquest conjunt de dades permet respondre a les nostres preguntes i que pot servir per detectar brots de malalties o bé factors de risc per aquestes.  
+
+
+
+
+
+
+
